@@ -3,10 +3,12 @@
 import { Edit, useForm } from "@refinedev/antd";
 import { useOne } from "@refinedev/core";
 import { Form, Input, InputNumber } from "antd";
+import { useParams } from "next/navigation";
 
 export default function UsersEdit() {
+  const params = useParams<{ id: string }>();
   const { formProps, saveButtonProps } = useForm({});
-  const { data, isLoading } = useOne({ resource: "users", id: 1 });
+  const { data, isLoading } = useOne({ resource: "users", id: params.id });
 
   if (isLoading) {
     return <div>Loading...</div>;
