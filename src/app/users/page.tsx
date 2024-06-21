@@ -9,9 +9,25 @@ import {
 } from "@refinedev/antd";
 import { useList, type BaseRecord } from "@refinedev/core";
 import { Space, Table } from "antd";
+import { useSearchParams } from "next/navigation";
 
 export default function UsersList() {
-  const { data, isLoading } = useList({ resource: "users" });
+  const searchParams = useSearchParams();
+  const pageSize = searchParams.get("pageSize")
+    ? Number(searchParams.get("pageSize"))
+    : 10;
+  const current = searchParams.get("current")
+    ? Number(searchParams.get("current"))
+    : 1;
+
+  const { data, isLoading } = useList({
+    resource: "users",
+    pagination: { current, pageSize },
+    sorters: [
+      // { field: "email", order: "desc" },
+      { field: "id", order: "asc" },
+    ],
+  });
   const { tableProps } = useTable({
     syncWithLocation: true,
   });
