@@ -2,11 +2,13 @@
 import { Show, TextField } from "@refinedev/antd";
 import { useOne, useShow } from "@refinedev/core";
 import { Typography } from "antd";
+import { useParams } from "next/navigation";
 
 const { Title } = Typography;
 
 export default function UserShow() {
-  const { data, isLoading } = useOne({ resource: "users", id: 1 });
+  const params = useParams<{ id: string }>();
+  const { data, isLoading } = useOne({ resource: "users", id: params.id });
   const record = data?.data;
 
   return (
