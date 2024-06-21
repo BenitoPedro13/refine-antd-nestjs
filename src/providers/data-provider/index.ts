@@ -30,7 +30,25 @@ export const dataProvider: DataProvider = {
     return { data };
   },
   getList: async ({ resource, pagination, filters, sorters, meta }) => {
-    const response = await fetch(`${API_URL}/${resource}`);
+    const params = new URLSearchParams();
+
+    if (pagination) {
+      params.append(
+        "_start",
+        `${((pagination.current ?? 1) - 1) * (pagination.pageSize ?? 10)}`
+      );
+      params.append(
+        "_end",
+        `${(pagination.current ?? 1) * (pagination.pageSize ?? 10)}`
+      );
+    }
+
+    if (sorters && sorters.length > 0) {
+      params.append("_sort", sorters.map((sorter) => sorter.field).join(","));
+      params.append("_order", sorters.map((sorter) => sorter.order).join(","));
+    }
+
+    const response = await fetch(`${API_URL}/${resource}?${params.toString()}`);
 
     if (response.status < 200 || response.status > 299) throw response;
 
