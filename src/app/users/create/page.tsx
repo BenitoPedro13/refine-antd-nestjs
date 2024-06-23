@@ -5,10 +5,6 @@ import { Form, Input, InputNumber } from "antd";
 
 export default function UserCreate() {
   const { formProps, saveButtonProps } = useForm({});
-  const { onFinish, mutationResult } = useForm({
-    action: "create",
-    resource: "users",
-  });
 
   return (
     <Create saveButtonProps={saveButtonProps}>
