@@ -1,4 +1,5 @@
 "use client";
+import { dataProvider } from "@providers/data-provider";
 import { Show, TextField } from "@refinedev/antd";
 import { useOne, useShow } from "@refinedev/core";
 import { Typography } from "antd";
@@ -10,7 +11,7 @@ export default function UserShow() {
   const params = useParams<{ id: string }>();
   const { data, isLoading } = useOne({ resource: "users", id: params.id });
   const record = data?.data;
-
+  const baseApiUrl = dataProvider.getApiUrl();
   return (
     <Show isLoading={isLoading}>
       <Title level={5}>ID</Title>
@@ -35,7 +36,16 @@ export default function UserShow() {
       <TextField value={record?.totalInitialInvestment} />
 
       <Title level={5}>Color</Title>
-      <TextField value={record?.color} />
+      <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+        <TextField value={record?.color} />
+        <input
+          type="color"
+          id="color"
+          name="color"
+          value={data?.data.color}
+          // onChange={(e) => e.preventDefault()}
+        />
+      </div>
 
       <Title level={5}>Campaign Name</Title>
       <TextField value={record?.campaignName} />
@@ -44,7 +54,17 @@ export default function UserShow() {
       <TextField value={record?.estimatedExecutedInvestment} />
 
       <Title level={5}>Profile Picture URL</Title>
-      <TextField value={record?.urlProfilePicture || "N/A"} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {data?.data.urlProfilePicture ? (
+          <img
+            src={baseApiUrl + data?.data.urlProfilePicture}
+            alt={data?.data.name}
+            style={{ maxWidth: "500px" }}
+          />
+        ) : (
+          "Nenhum Foto de Perfil existente para esse usuario"
+        )}
+      </div>
     </Show>
   );
 }

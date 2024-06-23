@@ -150,7 +150,12 @@ export default function UsersEdit() {
         </Form.Item>
 
         <Form.Item label="Color" name="color" initialValue={data?.data.color}>
-          <Input />
+          <input
+            type="color"
+            id="color"
+            name="color"
+            value={data?.data.color ?? "#0A0A0A"}
+          />
         </Form.Item>
 
         {/* <Form.Item
