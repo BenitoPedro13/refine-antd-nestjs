@@ -7,7 +7,7 @@ import {
   ShowButton,
   useTable,
 } from "@refinedev/antd";
-import { useList, type BaseRecord } from "@refinedev/core";
+import { CrudFilter, useMany, type BaseRecord } from "@refinedev/core";
 import { Space, Table } from "antd";
 import { useSearchParams } from "next/navigation";
 
@@ -19,26 +19,48 @@ export default function UsersList() {
   const current = searchParams.get("current")
     ? Number(searchParams.get("current"))
     : 1;
+  const filterField = searchParams.get("filter_field") ?? "name";
+  const filterValue = searchParams.get("filter_value");
 
-  const { data, isLoading } = useList({
-    resource: "users",
-    pagination: { current, pageSize },
-    sorters: [
-      // { field: "email", order: "desc" },
-      { field: "id", order: "asc" },
-    ],
-  });
-  const { tableProps } = useTable({
+  const filter: CrudFilter[] | undefined =
+    filterField && filterValue !== null
+      ? [{ field: filterField, operator: "contains", value: filterValue }]
+      : undefined;
+
+  const {
+    tableProps,
+    tableQueryResult: { data, isLoading },
+    current: currentPage,
+    setCurrent: setCurrentPage,
+    pageCount,
+    pageSize: currentPageSize,
+    setPageSize: setCurrentPageSize,
+  } = useTable({
     syncWithLocation: true,
+    pagination: { current, pageSize },
+    sorters: {
+      initial: [{ field: "id", order: "asc" }],
+    },
+    filters: {
+      initial: filter,
+    },
   });
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <List>
-      <Table {...tableProps} rowKey="id">
+      <Table
+        {...tableProps}
+        rowKey="id"
+        pagination={{
+          current: currentPage,
+          pageSize: currentPageSize,
+          total: data?.total,
+          onChange: (page, pageSize) => {
+            setCurrentPage(page);
+            setCurrentPageSize(pageSize);
+          },
+        }}
+      >
         <Table.Column dataIndex="id" title="ID" />
         <Table.Column dataIndex="email" title="Email" />
         <Table.Column dataIndex="name" title="Name" />
