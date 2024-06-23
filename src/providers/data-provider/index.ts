@@ -48,15 +48,25 @@ export const dataProvider: DataProvider = {
       params.append("_order", sorters.map((sorter) => sorter.order).join(","));
     }
 
+    if (filters && filters.length > 0) {
+      filters.forEach((filter) => {
+        if ("field" in filter && filter.operator === "contains") {
+          // Our fake API supports "eq" operator by simply appending the field name and value to the query string.
+          params.append(filter.field, filter.value);
+        }
+      });
+    }
+
     const response = await fetch(`${API_URL}/${resource}?${params.toString()}`);
 
     if (response.status < 200 || response.status > 299) throw response;
 
-    const data = await response.json();
+    const { result, total } = await response.json();
+    // const total = Number(data.length);
 
     return {
-      data,
-      total: 0, // We'll cover this in the next steps.
+      data: result,
+      total,
     };
   },
   create: async ({ resource, variables }) => {
@@ -79,7 +89,21 @@ export const dataProvider: DataProvider = {
   },
   getApiUrl: () => API_URL,
   // Optional methods:
-  // getMany: () => { /* ... */ },
+  getMany: async ({ resource, ids, meta }) => {
+    const params = new URLSearchParams();
+
+    if (ids) {
+      ids.forEach((id) => params.append("id", `${id}`));
+    }
+
+    const response = await fetch(`${API_URL}/${resource}?${params.toString()}`);
+
+    if (response.status < 200 || response.status > 299) throw response;
+
+    const data = await response.json();
+
+    return { data };
+  },
   // createMany: () => { /* ... */ },
   // deleteMany: () => { /* ... */ },
   // updateMany: () => { /* ... */ },
