@@ -1,9 +1,18 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { Edit, useForm } from "@refinedev/antd";
-import { useOne } from "@refinedev/core";
-import { Form, Input, InputNumber, Upload, Button } from "antd";
+import { DeleteButton, Edit, useForm } from "@refinedev/antd";
+import { BaseRecord, useOne, useTable } from "@refinedev/core";
+import {
+  Form,
+  Input,
+  InputNumber,
+  Upload,
+  Button,
+  List,
+  Table,
+  Space,
+} from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { useParams } from "next/navigation";
 import axios from "axios";
@@ -16,7 +25,25 @@ export default function UsersEdit() {
   const { data, isLoading } = useOne({ resource: "users", id: params.id });
   const baseApiUrl = dataProvider.getApiUrl();
 
-  // Function to handle file upload
+  const {
+    tableQueryResult: { data: atattachments, isLoading: attachmentsIsLoading },
+    current: currentPage,
+    setCurrent: setCurrentPage,
+    pageCount,
+    pageSize: currentPageSize,
+    setPageSize: setCurrentPageSize,
+  } = useTable({
+    syncWithLocation: true,
+    resource: "attachments",
+    meta: {
+      email: data?.data.email,
+    },
+    pagination: { current: 1, pageSize: 10 },
+    sorters: {
+      initial: [{ field: "id", order: "asc" }],
+    },
+  });
+
   const handleUploadCsv = async ({ file }: { file: RcFile }) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -40,10 +67,11 @@ export default function UsersEdit() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_email", data?.data.email);
+    console.log(file);
 
     try {
       const response = await axios.post(
-        `${baseApiUrl}/users/upload`,
+        `${baseApiUrl}/users/upload-profile-image`,
         formData,
         {
           headers: {
@@ -59,7 +87,31 @@ export default function UsersEdit() {
     }
   };
 
-  if (isLoading) {
+  const handleUploadAttachment = async ({ file }: { file: RcFile }) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("user_email", data?.data.email);
+    console.log(formData);
+
+    try {
+      const response = await axios.post(
+        `${baseApiUrl}/users/upload-attachment`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      console.log("File uploaded successfully", response.data);
+      return true;
+    } catch (error) {
+      console.error("Error uploading file", error);
+      return false;
+    }
+  };
+
+  if (isLoading || attachmentsIsLoading) {
     return <div>Loading...</div>;
   }
 
@@ -195,10 +247,10 @@ export default function UsersEdit() {
 
       {/* Separate upload button for CSV file */}
       <Form.Item label="Arquivo CSV">
-        <h3>
+        <div>
           {data?.data.performances[0]?.originalFilename ??
             "Nenhum CSV existente para esse usuario"}
-        </h3>
+        </div>
         <Upload
           beforeUpload={async (file) => await handleUploadCsv({ file: file })} // Prevent automatic upload
           // customRequest={} // Custom request to handle file upload
@@ -209,6 +261,61 @@ export default function UsersEdit() {
               : "Cique para fazer o upload do CSV"}
           </Button>
         </Upload>
+      </Form.Item>
+
+      <Form.Item label="Anexos">
+        <Upload
+          beforeUpload={async (file) =>
+            await handleUploadAttachment({ file: file })
+          } // Prevent automatic upload
+          // customRequest={} // Custom request to handle file upload
+        >
+          <Button icon={<UploadOutlined />}>
+            Cique para fazer o upload de um Anexo
+          </Button>
+        </Upload>
+        <List>
+          <Table
+            rowKey="id"
+            dataSource={atattachments?.data}
+            pagination={{
+              current: currentPage,
+              pageSize: currentPageSize,
+              total: atattachments?.total,
+              onChange: (page, pageSize) => {
+                setCurrentPage(page);
+                setCurrentPageSize(pageSize);
+              },
+            }}
+          >
+            <Table.Column dataIndex="id" title="ID" />
+            {/* <Table.Column dataIndex="email" title="Email" />
+          <Table.Column dataIndex="name" title="Name" />
+          <Table.Column dataIndex="password" title="Password" />
+          <Table.Column
+            dataIndex="totalInitialInvestment"
+            title="Total Initial Investment"
+          /> */}
+            {/* <Table.Column dataIndex="uniqueFilename" title="Nome Único" /> */}
+            <Table.Column dataIndex="originalFilename" title="Nome Original" />
+            {/* <Table.Column dataIndex="fileSize" title="Tamanho do Arquivo" /> */}
+            <Table.Column dataIndex="createdAt" title="Criado em" />
+
+            <Table.Column
+              title="Actions"
+              dataIndex="actions"
+              render={(_, record: BaseRecord) => (
+                <Space>
+                  <DeleteButton
+                    hideText
+                    size="small"
+                    recordItemId={record.id}
+                  />
+                </Space>
+              )}
+            />
+          </Table>
+        </List>
       </Form.Item>
     </Edit>
   );

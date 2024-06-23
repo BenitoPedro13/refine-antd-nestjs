@@ -57,12 +57,28 @@ export const dataProvider: DataProvider = {
       });
     }
 
+    if (resource === "attachments") {
+      console.log("meta", meta);
+      const response = await fetch(
+        `${API_URL}/${resource}/all?${
+          meta?.email ? `email=${meta?.email}&` : ""
+        }${params.toString()}`
+      );
+
+      if (response.status < 200 || response.status > 299) throw response;
+
+      const { result, total } = await response.json();
+
+      return {
+        data: result,
+        total,
+      };
+    }
     const response = await fetch(`${API_URL}/${resource}?${params.toString()}`);
 
     if (response.status < 200 || response.status > 299) throw response;
 
     const { result, total } = await response.json();
-    // const total = Number(data.length);
 
     return {
       data: result,
