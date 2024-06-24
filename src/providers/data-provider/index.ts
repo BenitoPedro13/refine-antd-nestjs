@@ -1,6 +1,7 @@
 "use client";
 
-const API_URL = "http://localhost:3001";
+// const API_URL = "http://localhost:3001";
+const API_URL = "https://dashapi.juicy.space";
 
 import type { DataProvider } from "@refinedev/core";
 
