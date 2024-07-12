@@ -1,13 +1,14 @@
 "use client";
 
-// const API_URL = "http://localhost:3001";
-const API_URL = "https://dashapi.juicy.space";
+const BACKEND_API_URL = "http://localhost:3000";
+export const LOCAL_API_URL = "http://localhost:3001/api";
+// const API_URL = "https://dashapi.juicy.space";
 
 import type { DataProvider } from "@refinedev/core";
 
 export const dataProvider: DataProvider = {
   getOne: async ({ resource, id, meta }) => {
-    const response = await fetch(`${API_URL}/${resource}/${id}`);
+    const response = await fetch(`${BACKEND_API_URL}/${resource}/${id}`);
 
     if (response.status < 200 || response.status > 299) throw response;
 
@@ -16,7 +17,7 @@ export const dataProvider: DataProvider = {
     return { data };
   },
   update: async ({ resource, id, variables }) => {
-    const response = await fetch(`${API_URL}/${resource}/${id}`, {
+    const response = await fetch(`${BACKEND_API_URL}/${resource}/${id}`, {
       method: "PATCH",
       body: JSON.stringify(variables),
       headers: {
@@ -61,7 +62,7 @@ export const dataProvider: DataProvider = {
     if (resource === "attachments") {
       console.log("meta", meta);
       const response = await fetch(
-        `${API_URL}/${resource}/all?${
+        `${BACKEND_API_URL}/${resource}/all?${
           meta?.email ? `email=${meta?.email}&` : ""
         }${params.toString()}`
       );
@@ -75,7 +76,9 @@ export const dataProvider: DataProvider = {
         total,
       };
     }
-    const response = await fetch(`${API_URL}/${resource}?${params.toString()}`);
+    const response = await fetch(
+      `${BACKEND_API_URL}/${resource}?${params.toString()}`
+    );
 
     if (response.status < 200 || response.status > 299) throw response;
 
@@ -87,7 +90,7 @@ export const dataProvider: DataProvider = {
     };
   },
   create: async ({ resource, variables }) => {
-    const response = await fetch(`${API_URL}/${resource}`, {
+    const response = await fetch(`${BACKEND_API_URL}/${resource}`, {
       method: "POST",
       body: JSON.stringify(variables),
       headers: {
@@ -104,7 +107,7 @@ export const dataProvider: DataProvider = {
   deleteOne: () => {
     throw new Error("Not implemented");
   },
-  getApiUrl: () => API_URL,
+  getApiUrl: () => BACKEND_API_URL,
   // Optional methods:
   getMany: async ({ resource, ids, meta }) => {
     const params = new URLSearchParams();
@@ -113,7 +116,9 @@ export const dataProvider: DataProvider = {
       ids.forEach((id) => params.append("id", `${id}`));
     }
 
-    const response = await fetch(`${API_URL}/${resource}?${params.toString()}`);
+    const response = await fetch(
+      `${BACKEND_API_URL}/${resource}?${params.toString()}`
+    );
 
     if (response.status < 200 || response.status > 299) throw response;
 
