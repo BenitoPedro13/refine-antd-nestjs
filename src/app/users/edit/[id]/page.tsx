@@ -1,7 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { DeleteButton, Edit, useForm } from "@refinedev/antd";
+import {
+  DeleteButton,
+  Edit,
+  EditButton,
+  ShowButton,
+  useForm,
+} from "@refinedev/antd";
 import { BaseRecord, useOne, useTable } from "@refinedev/core";
 import {
   Form,
@@ -16,8 +22,9 @@ import {
 import { UploadOutlined } from "@ant-design/icons";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { dataProvider } from "@providers/data-provider";
+import { dataProvider, LOCAL_API_URL } from "@providers/data-provider";
 import { RcFile } from "antd/es/upload";
+import { useState, useEffect } from "react";
 
 export default function UsersEdit() {
   const params = useParams<{ id: string }>();
@@ -25,16 +32,44 @@ export default function UsersEdit() {
   const { data, isLoading } = useOne({ resource: "users", id: params.id });
   const baseApiUrl = dataProvider.getApiUrl();
 
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleButtonClick = () => {
+    handleSearchCreators(searchTerm);
+  };
+
+  const [creators, setCreators] = useState([]);
+  const [creatorsLoading, setCreatorsLoading] = useState(false);
+
   const {
-    tableQueryResult: { data: atattachments, isLoading: attachmentsIsLoading },
-    current: currentPage,
-    setCurrent: setCurrentPage,
-    pageCount,
-    pageSize: currentPageSize,
-    setPageSize: setCurrentPageSize,
+    tableQueryResult: { data: attachments, isLoading: attachmentsIsLoading },
+    current: attachmentsCurrentPage,
+    setCurrent: attachmentsSetCurrentPage,
+    // pageCount: attachmentsPageCount,
+    pageSize: attachmentsCurrentPageSize,
+    setPageSize: attachmentsSetCurrentPageSize,
   } = useTable({
     syncWithLocation: true,
     resource: "attachments",
+    meta: {
+      email: data?.data.email,
+    },
+    pagination: { current: 1, pageSize: 10 },
+    sorters: {
+      initial: [{ field: "id", order: "asc" }],
+    },
+  });
+
+  const {
+    tableQueryResult: { data: posts, isLoading: postsIsLoading },
+    current: postsCurrentPage,
+    setCurrent: postsSetCurrentPage,
+    // pageCount,
+    pageSize: postsCurrentPageSize,
+    setPageSize: postsSetCurrentPageSize,
+  } = useTable({
+    syncWithLocation: true,
+    resource: "posts",
     meta: {
       email: data?.data.email,
     },
@@ -111,7 +146,32 @@ export default function UsersEdit() {
     }
   };
 
-  if (isLoading || attachmentsIsLoading) {
+  const handleSearchCreators = async (input: string) => {
+    try {
+      const response = await axios.get(
+        `${LOCAL_API_URL}/creators/search?input=${input}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("handleSearchCreators", response.data);
+      setCreators(response.data.rows); // Ensure this updates the state that is used in the Table
+    } catch (error) {
+      console.error("Error handleSearchCreators", error);
+    }
+  };
+
+  useEffect(() => {
+    if (searchTerm) {
+      handleSearchCreators(searchTerm);
+    } else {
+      setCreators([]);
+    }
+  }, [searchTerm]);
+
+  if (isLoading || attachmentsIsLoading || creatorsLoading) {
     return <div>Loading...</div>;
   }
 
@@ -209,14 +269,6 @@ export default function UsersEdit() {
             value={data?.data.color ?? "#0A0A0A"}
           />
         </Form.Item>
-
-        {/* <Form.Item
-          label="Profile Picture URL"
-          name="urlProfilePicture"
-          initialValue={data?.data.urlProfilePicture}
-        >
-          <Input />
-        </Form.Item> */}
       </Form>
 
       <Form.Item label="Foto de Perfil">
@@ -233,8 +285,7 @@ export default function UsersEdit() {
           <Upload
             beforeUpload={async (file) =>
               await handleUploadProfileImage({ file: file })
-            } // Prevent automatic upload
-            // customRequest={} // Custom request to handle file upload
+            }
           >
             <Button icon={<UploadOutlined />}>
               {data?.data.performances[0]?.originalFilename
@@ -245,15 +296,13 @@ export default function UsersEdit() {
         </div>
       </Form.Item>
 
-      {/* Separate upload button for CSV file */}
       <Form.Item label="Arquivo CSV">
         <div>
           {data?.data.performances[0]?.originalFilename ??
             "Nenhum CSV existente para esse usuario"}
         </div>
         <Upload
-          beforeUpload={async (file) => await handleUploadCsv({ file: file })} // Prevent automatic upload
-          // customRequest={} // Custom request to handle file upload
+          beforeUpload={async (file) => await handleUploadCsv({ file: file })}
         >
           <Button icon={<UploadOutlined />}>
             {data?.data.performances[0]?.originalFilename
@@ -267,8 +316,7 @@ export default function UsersEdit() {
         <Upload
           beforeUpload={async (file) =>
             await handleUploadAttachment({ file: file })
-          } // Prevent automatic upload
-          // customRequest={} // Custom request to handle file upload
+          }
         >
           <Button icon={<UploadOutlined />}>
             Cique para fazer o upload de um Anexo
@@ -277,30 +325,20 @@ export default function UsersEdit() {
         <List>
           <Table
             rowKey="id"
-            dataSource={atattachments?.data}
+            dataSource={attachments?.data}
             pagination={{
-              current: currentPage,
-              pageSize: currentPageSize,
-              total: atattachments?.total,
+              current: attachmentsCurrentPage,
+              pageSize: attachmentsCurrentPageSize,
+              total: attachments?.total,
               onChange: (page, pageSize) => {
-                setCurrentPage(page);
-                setCurrentPageSize(pageSize);
+                attachmentsSetCurrentPage(page);
+                attachmentsSetCurrentPageSize(pageSize);
               },
             }}
           >
             <Table.Column dataIndex="id" title="ID" />
-            {/* <Table.Column dataIndex="email" title="Email" />
-          <Table.Column dataIndex="name" title="Name" />
-          <Table.Column dataIndex="password" title="Password" />
-          <Table.Column
-            dataIndex="totalInitialInvestment"
-            title="Total Initial Investment"
-          /> */}
-            {/* <Table.Column dataIndex="uniqueFilename" title="Nome Único" /> */}
             <Table.Column dataIndex="originalFilename" title="Nome Original" />
-            {/* <Table.Column dataIndex="fileSize" title="Tamanho do Arquivo" /> */}
             <Table.Column dataIndex="createdAt" title="Criado em" />
-
             <Table.Column
               title="Actions"
               dataIndex="actions"
@@ -317,6 +355,121 @@ export default function UsersEdit() {
           </Table>
         </List>
       </Form.Item>
+
+      <Form.Item label="Posts">
+        <Input
+          placeholder="Filter Posts By Influencer Name"
+          // value={searchTerm}
+          // onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ width: "calc(100% - 200px)", marginRight: "8px" }}
+        />
+        <Button
+          // onClick={handleButtonClick}
+          type="primary"
+          style={{ marginRight: "8px" }}
+        >
+          Search
+        </Button>
+        <Button
+          // onClick={handleButtonClick}
+          type="primary"
+        >
+          Criar Novo
+        </Button>
+        <List>
+          <Table
+            rowKey="id"
+            dataSource={posts?.data}
+            pagination={{
+              current: postsCurrentPage,
+              pageSize: postsCurrentPageSize,
+              total: posts?.total,
+              onChange: (page, pageSize) => {
+                postsSetCurrentPage(page);
+                postsSetCurrentPageSize(pageSize);
+              },
+            }}
+          >
+            <Table.Column dataIndex="id" title="ID" />
+            <Table.Column dataIndex="type" title="Type" />
+            <Table.Column dataIndex="isVideo" title="Is Video" />
+            <Table.Column dataIndex="impressions" title="Impressions" />
+            <Table.Column dataIndex="interactions" title="Interactions" />
+            <Table.Column dataIndex="clicks" title="Clicks" />
+            <Table.Column dataIndex="videoViews" title="Video Views" />
+            <Table.Column dataIndex="engagement" title="Engagement" />
+            <Table.Column dataIndex="price" title="Price" />
+            <Table.Column dataIndex="postDate" title="Post Date" />
+            <Table.Column dataIndex="creatorId" title="Influencer ID" />
+            <Table.Column dataIndex="performanceId" title="Performance ID" />
+            <Table.Column
+              title="Actions"
+              dataIndex="actions"
+              render={(_, record: BaseRecord) => (
+                <Space>
+                  <EditButton hideText size="small" recordItemId={record.id} />
+                  <ShowButton hideText size="small" recordItemId={record.id} />
+                  <DeleteButton
+                    hideText
+                    size="small"
+                    recordItemId={record.id}
+                  />
+                </Space>
+              )}
+            />
+          </Table>
+        </List>
+      </Form.Item>
+
+      {/* <Form.Item label="Influencers">
+        <Input
+          placeholder="Search Influencers"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ width: "calc(100% - 100px)", marginRight: "8px" }}
+        />
+        <Button onClick={handleButtonClick} type="primary">
+          Search
+        </Button>
+        <List>
+          <Table
+            rowKey="id"
+            dataSource={creators}
+            pagination={{
+              current: currentPage,
+              pageSize: currentPageSize,
+              total: creators.length,
+              onChange: (page, pageSize) => {
+                setCurrentPage(page);
+                setCurrentPageSize(pageSize);
+              },
+            }}
+          >
+            <Table.Column dataIndex="profile" title="Profile" />
+            <Table.Column
+              dataIndex="image"
+              title="Image"
+              render={(text, record) => {
+                return (
+                  <img
+                    src={text}
+                    alt={text}
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      objectFit: "cover",
+                    }}
+                  />
+                );
+              }}
+            />
+            <Table.Column dataIndex="name" title="Name" />
+            <Table.Column dataIndex="creator_id" title="Creator ID" />
+            <Table.Column dataIndex="state" title="State" />
+          </Table>
+        </List>
+      </Form.Item> 
+      */}
     </Edit>
   );
 }

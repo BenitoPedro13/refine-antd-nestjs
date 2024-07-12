@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import { dataProvider } from "@providers/data-provider";
 import { Show, TextField } from "@refinedev/antd";
