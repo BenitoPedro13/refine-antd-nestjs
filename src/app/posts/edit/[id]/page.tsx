@@ -84,7 +84,6 @@ export default function UsersEdit() {
           "Content-Type": "multipart/form-data",
         },
       });
-      console.log("File uploaded successfully", response.data);
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -96,7 +95,6 @@ export default function UsersEdit() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_email", data?.data.email);
-    console.log(file);
 
     try {
       const response = await axios.post(
@@ -108,7 +106,6 @@ export default function UsersEdit() {
           },
         }
       );
-      console.log("File uploaded successfully", response.data);
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -120,7 +117,6 @@ export default function UsersEdit() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_email", data?.data.email);
-    console.log(formData);
 
     try {
       const response = await axios.post(
@@ -132,7 +128,6 @@ export default function UsersEdit() {
           },
         }
       );
-      console.log("File uploaded successfully", response.data);
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -150,7 +145,6 @@ export default function UsersEdit() {
           },
         }
       );
-      console.log("handleSearchCreators", response.data);
       setCreators(response.data.rows); // Ensure this updates the state that is used in the Table
     } catch (error) {
       console.error("Error handleSearchCreators", error);

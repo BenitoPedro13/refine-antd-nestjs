@@ -1,9 +1,9 @@
 "use client";
 
-// const BACKEND_API_URL = "http://localhost:3000";
-// export const LOCAL_API_URL = "http://localhost:3001/api";
-const BACKEND_API_URL = "https://dashapi.juicy.space";
-export const LOCAL_API_URL = "https://dashadmin.juicy.space/api";
+const BACKEND_API_URL = "http://localhost:3000";
+export const LOCAL_API_URL = "http://localhost:3001/api";
+// const BACKEND_API_URL = "https://dashapi.juicy.space";
+// export const LOCAL_API_URL = "https://dashadmin.juicy.space/api";
 
 import type { DataProvider } from "@refinedev/core";
 
@@ -60,8 +60,7 @@ export const dataProvider: DataProvider = {
       });
     }
 
-    if (resource === "attachments") {
-      console.log("meta", meta);
+    if (resource === "attachments" || resource === "posts") {
       const response = await fetch(
         `${BACKEND_API_URL}/${resource}/all?${
           meta?.email ? `email=${meta?.email}&` : ""
@@ -105,8 +104,16 @@ export const dataProvider: DataProvider = {
 
     return { data };
   },
-  deleteOne: () => {
-    throw new Error("Not implemented");
+  deleteOne: async ({ resource, id, meta }) => {
+    const response = await fetch(`${BACKEND_API_URL}/${resource}/${id}`, {
+      method: "DELETE",
+    });
+
+    if (response.status < 200 || response.status > 299) throw response;
+
+    const data = await response.json();
+
+    return { data };
   },
   getApiUrl: () => BACKEND_API_URL,
   // Optional methods:

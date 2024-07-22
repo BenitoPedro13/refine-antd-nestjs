@@ -15,20 +15,16 @@ import {
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { dataProvider, LOCAL_API_URL } from "@providers/data-provider";
+import {
+  CreatorService,
+  ICreatorsSearchResponse,
+} from "@database/services/CreatorService";
 
 export default function PostsCreate() {
+  const creatorsService = new CreatorService();
   const { formProps, saveButtonProps } = useForm({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [creators, setCreators] = useState<
-    {
-      creator_id: string;
-      id: string;
-      image: string;
-      name: string;
-      profile: string;
-      state: string;
-    }[]
-  >([]);
+  const [creators, setCreators] = useState<ICreatorsSearchResponse>([]);
   const [creatorsLoading, setCreatorsLoading] = useState(false);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(
     null
@@ -36,13 +32,13 @@ export default function PostsCreate() {
 
   const handleSearchCreators = async (input: string) => {
     try {
-      const response = await axios.get(
-        `${LOCAL_API_URL}/creators/search?input=${input}`,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      setCreators(response.data.rows);
+      const response = await creatorsService.searchByCreatorName(input);
+
+      if (!response) {
+        return;
+      }
+
+      setCreators(response);
     } catch (error) {
       console.error("Error handleSearchCreators", error);
     }

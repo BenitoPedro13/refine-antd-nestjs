@@ -55,26 +55,6 @@ export default function RootLayout({
                           canDelete: true,
                         },
                       },
-                      {
-                        name: "posts",
-                        list: "/posts",
-                        create: "/posts/create",
-                        edit: "/posts/edit/:id",
-                        show: "/posts/show/:id",
-                        meta: {
-                          canDelete: true,
-                        },
-                      },
-                      {
-                        name: "incluencers",
-                        list: "/incluencers",
-                        create: "/incluencers/create",
-                        edit: "/incluencers/edit/:id",
-                        show: "/incluencers/show/:id",
-                        meta: {
-                          canDelete: true,
-                        },
-                      },
                     ]}
                     options={{
                       syncWithLocation: true,

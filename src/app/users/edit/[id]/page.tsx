@@ -7,8 +7,10 @@ import {
   EditButton,
   ShowButton,
   useForm,
+  useModalForm,
 } from "@refinedev/antd";
-import { BaseRecord, useOne, useTable } from "@refinedev/core";
+import { EyeOutlined } from "@ant-design/icons";
+import { BaseRecord, useModal, useOne, useTable } from "@refinedev/core";
 import {
   Form,
   Input,
@@ -18,6 +20,9 @@ import {
   List,
   Table,
   Space,
+  Modal,
+  Select,
+  DatePicker,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { useParams } from "next/navigation";
@@ -25,6 +30,12 @@ import axios from "axios";
 import { dataProvider, LOCAL_API_URL } from "@providers/data-provider";
 import { RcFile } from "antd/es/upload";
 import { useState, useEffect } from "react";
+import {
+  CreatorService,
+  ICreatorsSearch,
+  ICreatorsSearchResponse,
+} from "@database/services/CreatorService";
+import { Posts } from "@types";
 
 export default function UsersEdit() {
   const params = useParams<{ id: string }>();
@@ -33,13 +44,34 @@ export default function UsersEdit() {
   const baseApiUrl = dataProvider.getApiUrl();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [creatorsSearch, setCreatorsSearch] = useState("");
+  const [creators, setCreators] = useState<ICreatorsSearchResponse>([]);
+  const [selectedPostsCreatorId, setSelectedPostsCreatorId] = useState<
+    string | null
+  >(null);
 
-  const handleButtonClick = () => {
-    handleSearchCreators(searchTerm);
+  const [creatorsLoading, setCreatorsLoading] = useState(false);
+
+  const [creatorsData, setCreatorsData] = useState<ICreatorsSearchResponse>([]);
+  const [creatorsDataFiltered, setCreatorsDataFiltered] =
+    useState<ICreatorsSearchResponse>([]);
+  const [creatorsDataLoading, setCreatorsDataLoading] = useState(false);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPostsModalCreatorId, setSelectedPostsModalCreatorId] =
+    useState<string | null>(null);
+
+  const showModal = () => {
+    setIsModalOpen(true);
   };
 
-  const [creators, setCreators] = useState([]);
-  const [creatorsLoading, setCreatorsLoading] = useState(false);
+  const handleOk = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
 
   const {
     tableQueryResult: { data: attachments, isLoading: attachmentsIsLoading },
@@ -49,12 +81,12 @@ export default function UsersEdit() {
     pageSize: attachmentsCurrentPageSize,
     setPageSize: attachmentsSetCurrentPageSize,
   } = useTable({
-    syncWithLocation: true,
+    syncWithLocation: false,
     resource: "attachments",
     meta: {
       email: data?.data.email,
     },
-    pagination: { current: 1, pageSize: 10 },
+    pagination: { current: 1, pageSize: 20 },
     sorters: {
       initial: [{ field: "id", order: "asc" }],
     },
@@ -67,17 +99,34 @@ export default function UsersEdit() {
     // pageCount,
     pageSize: postsCurrentPageSize,
     setPageSize: postsSetCurrentPageSize,
-  } = useTable({
-    syncWithLocation: true,
+  } = useTable<Posts>({
+    syncWithLocation: false,
     resource: "posts",
     meta: {
       email: data?.data.email,
     },
-    pagination: { current: 1, pageSize: 10 },
+    pagination: { current: 1, pageSize: 20 },
     sorters: {
       initial: [{ field: "id", order: "asc" }],
     },
   });
+
+  const {
+    modalProps: createModalProps,
+    formProps: createFormProps,
+    show: createModalShow,
+    onFinish: createModalOnFinish,
+    close: createModalClose,
+  } = useModalForm({
+    syncWithLocation: false,
+    action: "create",
+    resource: "posts",
+    autoResetForm: true,
+    autoSubmitClose: false,
+    warnWhenUnsavedChanges: false,
+  });
+
+  const modalProps = useModal();
 
   const handleUploadCsv = async ({ file }: { file: RcFile }) => {
     const formData = new FormData();
@@ -90,7 +139,7 @@ export default function UsersEdit() {
           "Content-Type": "multipart/form-data",
         },
       });
-      console.log("File uploaded successfully", response.data);
+
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -102,7 +151,6 @@ export default function UsersEdit() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_email", data?.data.email);
-    console.log(file);
 
     try {
       const response = await axios.post(
@@ -114,7 +162,7 @@ export default function UsersEdit() {
           },
         }
       );
-      console.log("File uploaded successfully", response.data);
+
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -126,7 +174,6 @@ export default function UsersEdit() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_email", data?.data.email);
-    console.log(formData);
 
     try {
       const response = await axios.post(
@@ -138,7 +185,7 @@ export default function UsersEdit() {
           },
         }
       );
-      console.log("File uploaded successfully", response.data);
+
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -146,32 +193,97 @@ export default function UsersEdit() {
     }
   };
 
-  const handleSearchCreators = async (input: string) => {
+  const creatorsService = new CreatorService();
+
+  const handleSearchCreatorsByName = async (input: string) => {
     try {
-      const response = await axios.get(
-        `${LOCAL_API_URL}/creators/search?input=${input}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      console.log("handleSearchCreators", response.data);
-      setCreators(response.data.rows); // Ensure this updates the state that is used in the Table
+      setCreatorsLoading(true);
+      const response = await creatorsService.searchByCreatorName(input);
+
+      if (!response) {
+        return;
+      }
+
+      setCreators(response);
     } catch (error) {
-      console.error("Error handleSearchCreators", error);
+      console.error("Error handleSearchCreatorsByName", error);
+    } finally {
+      setCreatorsLoading(false);
+    }
+  };
+
+  const handleSearchCreatorsById = async (input: string) => {
+    try {
+      setCreatorsLoading(true);
+      return await creatorsService.searchByCreatorId(input);
+    } catch (error) {
+      console.error("Error handleSearchCreatorsById", error);
+    } finally {
+      setCreatorsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (searchTerm) {
-      handleSearchCreators(searchTerm);
-    } else {
-      setCreators([]);
-    }
-  }, [searchTerm]);
+    const fetchCreatorsData = async () => {
+      if (posts && posts.data.length > 0) {
+        setCreatorsDataLoading(true);
 
-  if (isLoading || attachmentsIsLoading || creatorsLoading) {
+        console.log(posts, "posts");
+
+        // Get unique creator IDs
+        const unduplicatedCreatorsIds = Array.from(
+          posts.data
+            .filter((item) => item.userEmail === data?.data.email)
+            .reduce(
+              (map, item) => map.set(`${item.creatorId}`, item.creatorId),
+              new Map<string, string>()
+            )
+            .values()
+        );
+
+        try {
+          // Fetch creator data
+          const creatorsData = await Promise.all(
+            unduplicatedCreatorsIds.map((id) => handleSearchCreatorsById(id))
+          );
+
+          // Filter out undefined values
+          const creatorsDataWithoutUndefined = creatorsData.filter(
+            (item) => item !== undefined
+          );
+
+          // Count posts per creator
+          const postCounts = posts.data.reduce((acc, post) => {
+            acc[post.creatorId] = (acc[post.creatorId] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+          // Update creatorsData with post counts
+          const creatorsDataWithPostCount = creatorsDataWithoutUndefined.map(
+            (creator) => ({
+              ...creator,
+              postCount: postCounts[creator.creator_id] || 0,
+            })
+          );
+
+          console.log("creatorsDataWithPostCount", creatorsDataWithPostCount);
+
+          setCreatorsData(creatorsDataWithPostCount);
+          setCreatorsDataFiltered(creatorsDataWithPostCount);
+        } catch (error) {
+          console.error("Error fetching creators data:", error);
+        } finally {
+          setCreatorsDataLoading(false);
+        }
+      } else {
+        setCreatorsData([]);
+      }
+    };
+
+    fetchCreatorsData();
+  }, [posts]);
+
+  if (isLoading || attachmentsIsLoading) {
     return <div>Loading...</div>;
   }
 
@@ -324,6 +436,9 @@ export default function UsersEdit() {
         </Upload>
         <List>
           <Table
+            scroll={{
+              x: true,
+            }}
             rowKey="id"
             dataSource={attachments?.data}
             pagination={{
@@ -346,6 +461,7 @@ export default function UsersEdit() {
                 <Space>
                   <DeleteButton
                     hideText
+                    resource="attachments"
                     size="small"
                     recordItemId={record.id}
                   />
@@ -358,7 +474,7 @@ export default function UsersEdit() {
 
       <Form.Item label="Posts">
         <Input
-          placeholder="Filter Posts By Influencer Name"
+          placeholder="Filter Posts By Creator Name"
           // value={searchTerm}
           // onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: "calc(100% - 200px)", marginRight: "8px" }}
@@ -370,16 +486,18 @@ export default function UsersEdit() {
         >
           Search
         </Button>
-        <Button
-          // onClick={handleButtonClick}
-          type="primary"
-        >
+        <Button onClick={() => createModalShow()} type="primary">
           Criar Novo
         </Button>
+        {/* <CreatePostsModalForm /> */}
         <List>
           <Table
             rowKey="id"
             dataSource={posts?.data}
+            loading={postsIsLoading}
+            scroll={{
+              x: true,
+            }}
             pagination={{
               current: postsCurrentPage,
               pageSize: postsCurrentPageSize,
@@ -390,9 +508,12 @@ export default function UsersEdit() {
               },
             }}
           >
-            <Table.Column dataIndex="id" title="ID" />
             <Table.Column dataIndex="type" title="Type" />
-            <Table.Column dataIndex="isVideo" title="Is Video" />
+            <Table.Column
+              dataIndex="isVideo"
+              title="Is Video"
+              render={(value) => (value ? "Sim" : "Não")}
+            />
             <Table.Column dataIndex="impressions" title="Impressions" />
             <Table.Column dataIndex="interactions" title="Interactions" />
             <Table.Column dataIndex="clicks" title="Clicks" />
@@ -400,18 +521,29 @@ export default function UsersEdit() {
             <Table.Column dataIndex="engagement" title="Engagement" />
             <Table.Column dataIndex="price" title="Price" />
             <Table.Column dataIndex="postDate" title="Post Date" />
-            <Table.Column dataIndex="creatorId" title="Influencer ID" />
-            <Table.Column dataIndex="performanceId" title="Performance ID" />
+            <Table.Column dataIndex="creatorName" title="Creator Name" />
+            {/* <Table.Column dataIndex="userEmail" title="User Email" /> */}
             <Table.Column
               title="Actions"
               dataIndex="actions"
-              render={(_, record: BaseRecord) => (
+              render={(_, record: ICreatorsSearch) => (
                 <Space>
-                  <EditButton hideText size="small" recordItemId={record.id} />
-                  <ShowButton hideText size="small" recordItemId={record.id} />
-                  <DeleteButton
+                  {/* <EditButton
                     hideText
+                    resource="posts"
                     size="small"
+                    recordItemId={record.id}
+                  />
+                  <ShowButton
+                    hideText
+                    resource="posts"
+                    size="small"
+                    recordItemId={record.id}
+                  /> */}
+                  <DeleteButton
+                    size="small"
+                    hideText
+                    resource="posts"
                     recordItemId={record.id}
                   />
                 </Space>
@@ -421,55 +553,411 @@ export default function UsersEdit() {
         </List>
       </Form.Item>
 
-      {/* <Form.Item label="Influencers">
-        <Input
-          placeholder="Search Influencers"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: "calc(100% - 100px)", marginRight: "8px" }}
-        />
-        <Button onClick={handleButtonClick} type="primary">
-          Search
-        </Button>
+      <Form.Item label="Creators">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "start",
+            gap: "8px",
+          }}
+        >
+          <Input
+            placeholder="Filter Posts By Creator Name"
+            value={creatorsSearch}
+            onChange={(e) => {
+              console.log(posts?.data);
+
+              console.log(creatorsData);
+
+              const search = e.target.value.trimStart().toLowerCase();
+              setCreatorsSearch(() => search);
+
+              if (search.length === 0 || search === "") {
+                return setCreatorsDataFiltered(creatorsData);
+              }
+
+              const res = creatorsData.filter((item) =>
+                item.name.toLowerCase().includes(search)
+              );
+
+              return setCreatorsDataFiltered(res);
+            }}
+            style={{ minWidth: "100%", marginRight: "8px" }}
+          />
+        </div>
         <List>
           <Table
             rowKey="id"
-            dataSource={creators}
+            dataSource={creatorsDataFiltered}
+            loading={creatorsDataLoading}
+            scroll={{
+              x: true,
+            }}
             pagination={{
-              current: currentPage,
-              pageSize: currentPageSize,
-              total: creators.length,
+              current: postsCurrentPage,
+              pageSize: postsCurrentPageSize,
+              total: posts?.data.length,
               onChange: (page, pageSize) => {
-                setCurrentPage(page);
-                setCurrentPageSize(pageSize);
+                postsSetCurrentPage(page);
+                postsSetCurrentPageSize(pageSize);
               },
             }}
           >
-            <Table.Column dataIndex="profile" title="Profile" />
             <Table.Column
               dataIndex="image"
               title="Image"
-              render={(text, record) => {
-                return (
-                  <img
-                    src={text}
-                    alt={text}
-                    style={{
-                      width: "50px",
-                      height: "50px",
-                      objectFit: "cover",
-                    }}
-                  />
-                );
-              }}
+              render={(text, record) => (
+                <img
+                  src={text}
+                  alt={text}
+                  style={{
+                    width: "50px",
+                    height: "50px",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
             />
-            <Table.Column dataIndex="name" title="Name" />
-            <Table.Column dataIndex="creator_id" title="Creator ID" />
-            <Table.Column dataIndex="state" title="State" />
+            <Table.Column dataIndex="name" title="Creator Name" />
+            <Table.Column dataIndex="postCount" title="Posts Quantity" />
+            <Table.Column
+              title="Actions"
+              dataIndex="actions"
+              render={(_, record: ICreatorsSearch) => (
+                <Button
+                  onClick={() => {
+                    showModal();
+                    setSelectedPostsModalCreatorId(record.creator_id);
+                  }}
+                  size="small"
+                  icon={<EyeOutlined />}
+                />
+              )}
+            />
           </Table>
         </List>
-      </Form.Item> 
-      */}
+      </Form.Item>
+
+      <Modal {...createModalProps}>
+        <Form
+          {...createFormProps}
+          onFinish={async (values) => {
+            setSelectedPostsCreatorId(() => null);
+            createFormProps.form?.resetFields();
+            const finishResults = await createModalOnFinish(values);
+            createModalClose();
+            return finishResults;
+          }}
+          layout="vertical"
+        >
+          <Form.Item
+            label={"Type"}
+            name={["type"]}
+            rules={[
+              {
+                required: true,
+                message: "Please select the type",
+              },
+            ]}
+          >
+            <Select>
+              <Select.Option value="FEED">Feed</Select.Option>
+              <Select.Option value="STORIES">Stories</Select.Option>
+              <Select.Option value="TIKTOK">Tiktok</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label={"Is Video"}
+            name={["isVideo"]}
+            rules={[
+              {
+                required: true,
+                message: "Please indicate if this is a video",
+              },
+            ]}
+          >
+            <Select>
+              <Select.Option value={true}>Sim</Select.Option>
+              <Select.Option value={false}>Não</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label={"Impressions"}
+            name={["impressions"]}
+            rules={[
+              {
+                required: true,
+                type: "number",
+                message: "Please enter a valid number of impressions",
+              },
+            ]}
+          >
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Interactions"}
+            name={["interactions"]}
+            rules={[
+              {
+                required: true,
+                type: "number",
+                message: "Please enter a valid number of interactions",
+              },
+            ]}
+          >
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Clicks"}
+            name={["clicks"]}
+            rules={[
+              {
+                required: true,
+                type: "number",
+                message: "Please enter a valid number of clicks",
+              },
+            ]}
+          >
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Video Views"}
+            name={["videoViews"]}
+            rules={[
+              {
+                required: true,
+                type: "number",
+                message: "Please enter a valid number of video views",
+              },
+            ]}
+          >
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Engagement"}
+            name={["engagement"]}
+            rules={[
+              {
+                required: true,
+                type: "number",
+                message: "Please enter a valid engagement value",
+              },
+            ]}
+          >
+            <InputNumber min={0} step={0.01} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Price"}
+            name={["price"]}
+            rules={[
+              {
+                required: true,
+                type: "number",
+                message: "Please enter a valid price",
+              },
+            ]}
+          >
+            <InputNumber min={0} step={0.01} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Post Date"}
+            name={["postDate"]}
+            rules={[
+              {
+                required: true,
+                message: "Please select the post date",
+              },
+            ]}
+          >
+            <DatePicker style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"Creator"}
+            name={["creatorId"]}
+            rules={[
+              {
+                required: true,
+                message: "Please select an Creator",
+              },
+            ]}
+          >
+            <div>
+              <Input
+                placeholder="Search Creators"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: "calc(100% - 100px)", marginRight: "8px" }}
+              />
+              <Button
+                onClick={() => handleSearchCreatorsByName(searchTerm)}
+                type="primary"
+              >
+                Search
+              </Button>
+              <Table
+                scroll={{
+                  x: true,
+                }}
+                rowKey="id"
+                dataSource={creators}
+                pagination={false}
+                loading={creatorsLoading}
+                onRow={(record) => ({
+                  onClick: () => {
+                    setSelectedPostsCreatorId(record.creator_id);
+                    createFormProps.form?.setFieldValue(
+                      "creatorId",
+                      record.creator_id
+                    );
+                    createFormProps.form?.setFieldValue(
+                      "creatorName",
+                      record.name
+                    );
+                  },
+                  style: {
+                    cursor: "pointer",
+                    backgroundColor:
+                      record.creator_id === selectedPostsCreatorId
+                        ? "#65a30d"
+                        : undefined,
+                  },
+                })}
+              >
+                <Table.Column dataIndex="name" title="Name" />
+                <Table.Column dataIndex="creator_id" title="Creator ID" />
+                <Table.Column
+                  dataIndex="image"
+                  title="Image"
+                  render={(text, record) => (
+                    <img
+                      src={text}
+                      alt={text}
+                      style={{
+                        width: "50px",
+                        height: "50px",
+                        objectFit: "cover",
+                      }}
+                    />
+                  )}
+                />
+              </Table>
+            </div>
+          </Form.Item>
+
+          <Form.Item
+            label={"Creator Name"}
+            name={["creatorName"]}
+            rules={[
+              {
+                required: true,
+                message: "Please select an Creator",
+              },
+            ]}
+          >
+            <Input disabled style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item
+            label={"User Email"}
+            name={["userEmail"]}
+            initialValue={data?.data.email}
+            rules={[
+              {
+                required: true,
+                type: "string",
+                message: "Please enter a valid User Email",
+              },
+            ]}
+          >
+            <Input disabled type="email" style={{ width: "100%" }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={isModalOpen}
+        onOk={handleOk}
+        onCancel={handleCancel}
+        centered
+        width={"100%"}
+        style={{ maxWidth: "80vw" }}
+      >
+        <p>
+          <List>
+            <Table
+              rowKey="id"
+              dataSource={posts?.data.filter(
+                (item) => item.creatorId === selectedPostsModalCreatorId
+              )}
+              loading={postsIsLoading}
+              scroll={{
+                x: true,
+              }}
+              pagination={{
+                current: postsCurrentPage,
+                pageSize: postsCurrentPageSize,
+                total: posts?.total,
+                onChange: (page, pageSize) => {
+                  postsSetCurrentPage(page);
+                  postsSetCurrentPageSize(pageSize);
+                },
+              }}
+            >
+              <Table.Column dataIndex="type" title="Type" />
+              <Table.Column
+                dataIndex="isVideo"
+                title="Is Video"
+                render={(value) => (value ? "Sim" : "Não")}
+              />
+              <Table.Column dataIndex="impressions" title="Impressions" />
+              <Table.Column dataIndex="interactions" title="Interactions" />
+              <Table.Column dataIndex="clicks" title="Clicks" />
+              <Table.Column dataIndex="videoViews" title="Video Views" />
+              <Table.Column dataIndex="engagement" title="Engagement" />
+              <Table.Column dataIndex="price" title="Price" />
+              <Table.Column dataIndex="postDate" title="Post Date" />
+              <Table.Column dataIndex="creatorName" title="Creator Name" />
+              {/* <Table.Column dataIndex="userEmail" title="User Email" /> */}
+              <Table.Column
+                title="Actions"
+                dataIndex="actions"
+                render={(_, record: ICreatorsSearch) => (
+                  <Space>
+                    {/* <EditButton
+                    hideText
+                    resource="posts"
+                    size="small"
+                    recordItemId={record.id}
+                  />
+                  <ShowButton
+                    hideText
+                    resource="posts"
+                    size="small"
+                    recordItemId={record.id}
+                  /> */}
+                    <DeleteButton
+                      size="small"
+                      hideText
+                      resource="posts"
+                      recordItemId={record.id}
+                    />
+                  </Space>
+                )}
+              />
+            </Table>
+          </List>
+        </p>
+      </Modal>
     </Edit>
   );
 }
