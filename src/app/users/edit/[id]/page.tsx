@@ -331,6 +331,23 @@ export default function UsersEdit() {
         </Form.Item>
 
         <Form.Item
+          label={"Usar dados dos Posts dos Creators"}
+          name={"byPosts"}
+          rules={[
+            {
+              required: true,
+              message:
+                "Please indicate if the data should be based on the Posts Table or not.",
+            },
+          ]}
+        >
+          <Select>
+            <Select.Option value={true}>Sim</Select.Option>
+            <Select.Option value={false}>Não</Select.Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item
           label="Total Initial Investment"
           name="totalInitialInvestment"
           initialValue={data?.data.totalInitialInvestment}

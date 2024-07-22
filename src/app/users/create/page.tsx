@@ -1,7 +1,7 @@
 "use client";
 
 import { Create, useForm } from "@refinedev/antd";
-import { Form, Input, InputNumber } from "antd";
+import { Form, Input, InputNumber, Select } from "antd";
 
 export default function UserCreate() {
   const { formProps, saveButtonProps } = useForm({});
@@ -48,6 +48,24 @@ export default function UserCreate() {
           ]}
         >
           <Input.Password />
+        </Form.Item>
+
+        <Form.Item
+          label={"Usar dados dos Posts dos Creators"}
+          name={["byPosts"]}
+          rules={[
+            {
+              required: true,
+              type: "boolean",
+              message:
+                "Please indicate if the data should be based on the Posts Table or not.",
+            },
+          ]}
+        >
+          <Select>
+            <Select.Option value={true}>Sim</Select.Option>
+            <Select.Option value={false}>Não</Select.Option>
+          </Select>
         </Form.Item>
 
         <Form.Item
