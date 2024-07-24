@@ -36,6 +36,17 @@ import {
   ICreatorsSearchResponse,
 } from "@database/services/CreatorService";
 import { Posts } from "@types";
+import Link from "next/link";
+
+interface IAttachments {
+  createdAt: string;
+  fileSize: number;
+  id: number;
+  originalFilename: string;
+  uniqueFilename: string;
+  updatedAt: string;
+  userEmail: string;
+}
 
 export default function UsersEdit() {
   const params = useParams<{ id: string }>();
@@ -60,6 +71,10 @@ export default function UsersEdit() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPostsModalCreatorId, setSelectedPostsModalCreatorId] =
     useState<string | null>(null);
+
+  const [postAttachment, setPostAttachment] = useState<IAttachments | null>(
+    null
+  );
 
   const showModal = () => {
     setIsModalOpen(true);
@@ -170,7 +185,13 @@ export default function UsersEdit() {
     }
   };
 
-  const handleUploadAttachment = async ({ file }: { file: RcFile }) => {
+  const handleUploadAttachment = async ({
+    file,
+    isPostAttachment,
+  }: {
+    file: RcFile;
+    isPostAttachment: boolean;
+  }) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_email", data?.data.email);
@@ -186,6 +207,9 @@ export default function UsersEdit() {
         }
       );
 
+      if (isPostAttachment && response !== undefined) {
+        setPostAttachment(() => response.data);
+      }
       return true;
     } catch (error) {
       console.error("Error uploading file", error);
@@ -444,7 +468,7 @@ export default function UsersEdit() {
       <Form.Item label="Anexos">
         <Upload
           beforeUpload={async (file) =>
-            await handleUploadAttachment({ file: file })
+            await handleUploadAttachment({ file, isPostAttachment: false })
           }
         >
           <Button icon={<UploadOutlined />}>
@@ -469,6 +493,24 @@ export default function UsersEdit() {
             }}
           >
             <Table.Column dataIndex="id" title="ID" />
+            <Table.Column
+              dataIndex="image"
+              title="Image"
+              render={(
+                _,
+                record: { originalFilename: string; uniqueFilename: string }
+              ) => (
+                <img
+                  src={`${baseApiUrl}/public/${record.uniqueFilename}`}
+                  alt={record.originalFilename}
+                  style={{
+                    maxWidth: "150px",
+                    maxHeight: "150px",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
+            />
             <Table.Column dataIndex="originalFilename" title="Nome Original" />
             <Table.Column dataIndex="createdAt" title="Criado em" />
             <Table.Column
@@ -629,9 +671,10 @@ export default function UsersEdit() {
                   src={text}
                   alt={text}
                   style={{
-                    width: "50px",
-                    height: "50px",
+                    width: "150px",
+                    height: "150px",
                     objectFit: "cover",
+                    borderRadius: 9999,
                   }}
                 />
               )}
@@ -662,7 +705,10 @@ export default function UsersEdit() {
           onFinish={async (values) => {
             setSelectedPostsCreatorId(() => null);
             createFormProps.form?.resetFields();
-            const finishResults = await createModalOnFinish(values);
+            const finishResults = await createModalOnFinish({
+              ...values,
+              attachmentId: postAttachment?.id,
+            });
             createModalClose();
             return finishResults;
           }}
@@ -699,6 +745,50 @@ export default function UsersEdit() {
               <Select.Option value={true}>Sim</Select.Option>
               <Select.Option value={false}>Não</Select.Option>
             </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Anexo"
+            name={["attachmentId"]}
+            rules={[
+              {
+                required: false,
+                message: "upload an attachment for this Post",
+              },
+            ]}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+              }}
+            >
+              {postAttachment ? (
+                <img
+                  src={`${baseApiUrl}/public/${postAttachment.uniqueFilename}`}
+                  alt={postAttachment.originalFilename}
+                  style={{
+                    maxWidth: "150px",
+                    maxHeight: "150px",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : null}
+              <Upload
+                beforeUpload={async (file) => {
+                  await handleUploadAttachment({
+                    file,
+                    isPostAttachment: true,
+                  });
+                  return false;
+                }}
+              >
+                <Button icon={<UploadOutlined />}>
+                  Cique para fazer o upload de um Anexo
+                </Button>
+              </Upload>
+            </div>
           </Form.Item>
 
           <Form.Item
@@ -944,7 +1034,32 @@ export default function UsersEdit() {
               <Table.Column dataIndex="price" title="Price" />
               <Table.Column dataIndex="postDate" title="Post Date" />
               <Table.Column dataIndex="creatorName" title="Creator Name" />
-              {/* <Table.Column dataIndex="userEmail" title="User Email" /> */}
+              <Table.Column
+                title="Anexo"
+                render={(
+                  _,
+                  record: {
+                    attachment?: {
+                      originalFilename: string;
+                      uniqueFilename: string;
+                    };
+                  }
+                ) =>
+                  record.attachment ? (
+                    <img
+                      src={`${baseApiUrl}/public/${record.attachment?.uniqueFilename}`}
+                      alt={record.attachment?.originalFilename}
+                      style={{
+                        maxWidth: "150px",
+                        maxHeight: "150px",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    "N/A"
+                  )
+                }
+              />
               <Table.Column
                 title="Actions"
                 dataIndex="actions"
