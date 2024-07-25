@@ -1,5 +1,6 @@
 "use client";
-
+import { RefineButtonClassNames } from "@refinedev/ui-types";
+import { PlusSquareOutlined } from "@ant-design/icons";
 import {
   DeleteButton,
   EditButton,
@@ -8,8 +9,9 @@ import {
   useTable,
 } from "@refinedev/antd";
 import { CrudFilter, useMany, type BaseRecord } from "@refinedev/core";
-import { Space, Table } from "antd";
+import { Button, Space, Table, Tooltip } from "antd";
 import { useSearchParams } from "next/navigation";
+import { dataProvider } from "@providers/data-provider";
 
 export default function UsersList() {
   const searchParams = useSearchParams();
@@ -84,6 +86,15 @@ export default function UsersList() {
           dataIndex="actions"
           render={(_, record: BaseRecord) => (
             <Space>
+              <Tooltip title="Duplicar Usuario">
+                <Button
+                  size="small"
+                  onClick={() => dataProvider.duplicateUser(record.email)}
+                  // shape="circle"
+                  className={RefineButtonClassNames.CloneButton}
+                  icon={<PlusSquareOutlined />}
+                />
+              </Tooltip>
               <EditButton hideText size="small" recordItemId={record.id} />
               <ShowButton hideText size="small" recordItemId={record.id} />
               <DeleteButton hideText size="small" recordItemId={record.id} />

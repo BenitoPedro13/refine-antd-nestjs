@@ -1,13 +1,15 @@
 "use client";
 
-// const BACKEND_API_URL = "http://localhost:3000";
-// export const LOCAL_API_URL = "http://localhost:3001/api";
-const BACKEND_API_URL = "https://dashapi.juicy.space";
-export const LOCAL_API_URL = "https://dashadmin.juicy.space/api";
+const BACKEND_API_URL = "http://localhost:3000";
+export const LOCAL_API_URL = "http://localhost:3001/api";
+// const BACKEND_API_URL = "https://dashapi.juicy.space";
+// export const LOCAL_API_URL = "https://dashadmin.juicy.space/api";
 
-import type { DataProvider } from "@refinedev/core";
+import type { BaseRecord, CreateResponse, DataProvider } from "@refinedev/core";
 
-export const dataProvider: DataProvider = {
+export const dataProvider: DataProvider & {
+  duplicateUser: (userEmail: string) => Promise<CreateResponse<BaseRecord>>;
+} = {
   getOne: async ({ resource, id, meta }) => {
     const response = await fetch(`${BACKEND_API_URL}/${resource}/${id}`);
 
@@ -93,6 +95,23 @@ export const dataProvider: DataProvider = {
     const response = await fetch(`${BACKEND_API_URL}/${resource}`, {
       method: "POST",
       body: JSON.stringify(variables),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.status < 200 || response.status > 299) throw response;
+
+    const data = await response.json();
+
+    return { data };
+  },
+  duplicateUser: async (
+    userEmail: string
+  ): Promise<CreateResponse<BaseRecord>> => {
+    const response = await fetch(`${BACKEND_API_URL}/users/duplicate`, {
+      method: "POST",
+      body: JSON.stringify({ user_email: userEmail }),
       headers: {
         "Content-Type": "application/json",
       },
