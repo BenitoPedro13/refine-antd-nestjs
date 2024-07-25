@@ -1,9 +1,9 @@
 "use client";
 
-const BACKEND_API_URL = "http://localhost:3000";
-export const LOCAL_API_URL = "http://localhost:3001/api";
-// const BACKEND_API_URL = "https://dashapi.juicy.space";
-// export const LOCAL_API_URL = "https://dashadmin.juicy.space/api";
+// const BACKEND_API_URL = "http://localhost:3000";
+// export const LOCAL_API_URL = "http://localhost:3001/api";
+const BACKEND_API_URL = "https://dashapi.juicy.space";
+export const LOCAL_API_URL = "https://dashadmin.juicy.space/api";
 
 import type { BaseRecord, CreateResponse, DataProvider } from "@refinedev/core";
 
